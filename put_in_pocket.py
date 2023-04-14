@@ -6,6 +6,7 @@ import datetime
 import os
 import pathlib
 import re
+import sys
 from typing import Any
 
 import click
@@ -93,11 +94,24 @@ def load_config() -> dict[str, Any]:
     return config
 
 
-def save_config(config: dict[str, Any]):
-    """Save the configuration file."""
+def save_config_dict(config: dict[str, Any]):
+    """Save the configuration dict to file."""
     config_file = get_config_file()
     with open(config_file, "w") as f:
         toml.dump(config, f)
+
+
+def save_config(
+    consumer_key: str, access_token: str, request_token: str
+) -> tuple[str, str, str]:
+    """Save the config to the config file and return the tokens."""
+
+    # request token is not saved but is returned in case it's needed by the calling code
+    # this allows `return save_config() to be used in the get_api_tokens() function`
+
+    config = {"pocket": {"consumer_key": consumer_key, "access_token": access_token}}
+    save_config_dict(config)
+    return consumer_key, access_token, request_token
 
 
 def get_url_from_text(text: str) -> str | None:
@@ -213,10 +227,18 @@ def get_tokens_from_config(config: dict[str, Any]) -> tuple[str, str]:
     return consumer_key, access_token
 
 
-def get_api_tokens() -> tuple[str, str, str]:
-    """Get consumer key, access token, request token from config or from user"""
+def get_api_tokens(
+    consumer_key: str | None, access_token: str | None
+) -> tuple[str, str, str]:
+    """Get consumer key, access token, request token from config or from user, save to config."""
+
+    if consumer_key and access_token:
+        return save_config(consumer_key, access_token, "")
+
     config = load_config()
-    consumer_key, access_token = get_tokens_from_config(config)
+    key_, token_ = get_tokens_from_config(config)
+    consumer_key = consumer_key or key_
+    access_token = access_token or token_
 
     redirect_uri = "https://www.google.com"
     if not consumer_key:
@@ -234,55 +256,96 @@ def get_api_tokens() -> tuple[str, str, str]:
     else:
         request_token = get_request_token(consumer_key, redirect_uri)
 
-    config = {"pocket": {"consumer_key": consumer_key, "access_token": access_token}}
-    save_config(config)
-
-    return consumer_key, access_token, request_token
+    return save_config(consumer_key, access_token, request_token)
 
 
 @click.command()
 @click.version_option(version=__version__)
-@click.option("--verbose", "verbose_", is_flag=True, default=False, help="Print verbose output.")
-@click.option("--log/--no-log", "log_", is_flag=True, default=True, help=f"Log to file: {get_log_file()}.")
+@click.option(
+    "--verbose", "verbose_", is_flag=True, default=False, help="Print verbose output."
+)
+@click.option(
+    "--log/--no-log",
+    "log_",
+    is_flag=True,
+    default=True,
+    help=f"Log to file: {get_log_file()}.",
+)
 @click.option("--dry-run", is_flag=True, help="Dry run mode; don't add URL to Pocket.")
-@click.argument("file_or_url")
+@click.option(
+    "--consumer-key",
+    help="Pocket API consumer key; "
+    f"can also be specified in {POCKET_CONSUMER_KEY} environment variable or loaded from {get_config_file()}.",
+)
+@click.option(
+    "--access-token",
+    help="Pocket API access token; "
+    f"can also be specified in {POCKET_ACCESS_TOKEN} environment variable or loaded from {get_config_file()}.",
+)
+@click.option(
+    "--authorize",
+    is_flag=True,
+    help="Authenticate with Pocket to get access token hen exit; "
+    f"will store access token in {get_config_file()}.",
+)
+@click.argument("file_or_url", nargs=-1)
 @click.pass_context
-def main(ctx: click.Context, dry_run: bool, verbose_: bool, log_: bool, file_or_url: str):
+def main(
+    ctx: click.Context,
+    dry_run: bool,
+    verbose_: bool,
+    log_: bool,
+    consumer_key: str | None,
+    access_token: str | None,
+    authorize: bool,
+    file_or_url: str,
+):
     """Add URL or the first URL found in a text FILE to Pocket."""
-
-    if not file_or_url:
-        click.echo(ctx.get_help())
-        ctx.exit()
 
     global _global_log
     global _global_verbose
     _global_log = log_
     _global_verbose = verbose_
 
-    consumer_key, access_token, _ = get_api_tokens()
-
-    # Read the text file.
-    if pathlib.Path(file_or_url).is_file():
-        verbose(f"Reading text file: {file_or_url}")
-        with open(file_or_url, "r") as f:
-            text = f.read()
-            url = get_url_from_text(text)
-    else:
-        # Assume the argument is a URL.
-        url = get_url_from_text(file_or_url)
-
-    if not url:
-        verbose("No URL found in the text file.")
+    if not authorize and not file_or_url:
+        print("No FILE or URL specified.")
+        click.echo(ctx.get_help())
         ctx.exit(1)
-    verbose(f"Found URL: '{url}'")
 
-    # Add the URL to Pocket.
-    if not dry_run:
-        response = add_url_to_pocket(url, consumer_key, access_token)
-        if response["status"] == 1:
-            verbose(f"URL '{url}' added to Pocket: {response}")
+    consumer_key, access_token, _ = get_api_tokens(consumer_key, access_token)
+
+    if authorize:
+        print(f"Authenticated to Pocket with {consumer_key=} and {access_token=}")
+        ctx.exit()
+
+    for f_or_u in file_or_url:
+        if pathlib.Path(f_or_u).is_file():
+            verbose(f"Reading text file: {f_or_u}")
+            with open(f_or_u, "r") as f:
+                text = f.read()
+                url = get_url_from_text(text)
         else:
-            verbose(f"Error adding URL to Pocket: {response}")
+            # Assume the argument is a URL.
+            url = get_url_from_text(f_or_u)
+
+        if not url:
+            verbose("No URL found in the text file.")
+            ctx.exit(1)
+        verbose(f"Found URL: '{url}'")
+
+        # Add the URL to Pocket.
+        if not dry_run:
+            response = add_url_to_pocket(url, consumer_key, access_token)
+            if response["status"] == 1:
+                print(f"URL added to Pocket: '{url}'")
+                log(f"URL added to Pocket: '{url}'")
+            else:
+                print(
+                    f"Error {response['status']} adding URL to Pocket: '{url}'",
+                    file=sys.stderr,
+                )
+                log(f"Error {response['status']} adding URL to Pocket: '{url}'")
+            verbose(f"{response}")
 
 
 if __name__ == "__main__":
