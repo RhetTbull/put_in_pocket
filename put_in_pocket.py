@@ -1,4 +1,4 @@
-"""Read a text file (for example, the body of an email) and add the first URL found to Pocket."""
+"""Command line app to add URLs to Pocket."""
 
 from __future__ import annotations
 
@@ -133,7 +133,13 @@ def get_url_from_text(text: str) -> str | None:
     url_pattern = re.compile(
         r"(?i)\b((?:https?:\/\/|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
     )
-    return match[0] if (match := url_pattern.search(text)) else None
+    if match := url_pattern.search(text):
+        url = match[0]
+        if not url.startswith("http"):
+            # add https:// if it's not there (assume https)
+            url = f"https://{url}"
+        return url
+    return None
 
 
 def add_url_to_pocket(url: str, consumer_key: str, access_token: str) -> dict[str, Any]:
@@ -154,6 +160,8 @@ def add_url_to_pocket(url: str, consumer_key: str, access_token: str) -> dict[st
     }
     data = {"url": url, "consumer_key": consumer_key, "access_token": access_token}
     response = requests.post(endpoint, headers=headers, json=data)
+    if response.status_code != 200:
+        raise ValueError(f"Error adding URL to Pocket: {response.content}")
     return response.json()
 
 
@@ -300,7 +308,16 @@ def main(
     authorize: bool,
     file_or_url: str,
 ):
-    """Add URL or the first URL found in a text FILE to Pocket."""
+    """Add URL or the first URL found in a text FILE to Pocket.
+
+    FILE_OR_URL can be a URL or a path to a text file containing a URL
+    (for example, an email message in .eml or .txt format)
+
+    If FILE_OR_URL is a file and it contains multiple URLs,
+    only the first URL will be added to Pocket.
+
+    You may specify multiple FILE_OR_URL arguments.
+    """
 
     global _global_log
     global _global_verbose
