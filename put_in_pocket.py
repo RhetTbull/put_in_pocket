@@ -15,7 +15,7 @@ import toml
 from rich import print
 from xdg import xdg_config_home, xdg_data_home
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 # constants
 APP_NAME = "put_in_pocket"

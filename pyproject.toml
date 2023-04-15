@@ -5,6 +5,7 @@ build-backend = "flit_core.buildapi"
 [project]
 name = "put_in_pocket"
 authors = [{ name = "Rhet Turnbull", email = "rturnbull+git@gmail.com" }]
+readme = "README.md"
 license = { file = "LICENSE" }
 classifiers = ["License :: OSI Approved :: MIT License"]
 dynamic = ["version", "description"]
@@ -15,6 +16,7 @@ dependencies = [
     "toml >= 0.10.2",
     "xdg >= 6.0.0",
 ]
+requires-python = ">=3.9"
 
 [project.urls]
 Home = "https://github.com/RhetTbull/put_in_pocket"
