@@ -12,9 +12,12 @@ using terms from application "Mail"
 	on perform mail action with messages theMessages
 		set theScriptPath to "/Users/rhet/.local/bin/put_in_pocket.sh"
 		repeat with theMessage in theMessages
+			set theSubject to ""
+			set theBody to ""
 			set theSubject to subject of theMessage
 			set theBody to source of theMessage
-			set theTempFile to POSIX path of (path to temporary items folder) & "save_to_pocket.txt"
+			set uniqueID to (do shell script "uuidgen") -- generate a unique ID using the "uuidgen" command
+			set theTempFile to POSIX path of (path to temporary items folder) & "save_to_pocket_" & uniqueID & ".txt"
 			set theFileID to open for access theTempFile with write permission
 			write theSubject & " " & theBody to theFileID
 			close access theFileID
