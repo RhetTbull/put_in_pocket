@@ -26,7 +26,7 @@ or
 ## Configuration
 
 Before running `put_in_pocket` for the first time, you will need to obtain a consumer key from Pocket.
-You can do this by creating an application at [https://getpocket.com/developer/apps/new]()https://getpocket.com/developer/apps/new).
+You can do this by creating an application at [https://getpocket.com/developer/apps/new](https://getpocket.com/developer/apps/new).
 
 You will need to give your application a name and a description, and ensure that `add` permission is selected.
 
