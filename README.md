@@ -1,0 +1,93 @@
+# Put in Pocket
+
+Simple command line tool to add URLs to Pocket.
+
+## Synopsis
+
+    put_in_pocket FILE_OR_URL [FILE_OR_URL ...]
+
+## Description
+
+Put in Pocket is a simple command line tool to add URLs to Pocket.
+It takes one or more URLs or files containing a URL as arguments and adds them to your Pocket account.
+
+If the argument is a file, the first URL found in the file is added to Pocket (subsequent URLs are ignored).
+This mode of operation is primarily designed to find a URL in an email message and add it to Pocket.
+See [#motivation-for-building-this-tool](Motivation for building this tool) for more details.
+
+## Installation
+
+`pip install --user put_in_pocket`
+
+or
+
+`pipx install put_in_pocket`
+
+## Configuration
+
+Before running `put_in_pocket` for the first time, you will need to obtain a consumer key from Pocket.
+You can do this by creating an application at [https://getpocket.com/developer/apps/new]()https://getpocket.com/developer/apps/new).
+
+You will need to give your application a name and a description, and ensure that `add` permission is selected.
+
+[!The new Pocket app configuration page](https://raw.githubusercontent.com/RhetTbull/put_in_pocket/main/NewPocketApp.png "The new Pocket app configuration page")
+
+The first time you run `put_in_pocket`, it will ask you to authorize it to access your Pocket account.
+
+After you get your consumer key, run `put_in_pocket --authorize` and follow the instructions.
+
+You'll need to enter your consumer key then follow the link to Pocket to authorize the application.
+
+## Motivation for building this tool
+
+I have been a heavy Pocket user for many years and the "email to Pocket" feature is a big part of my workflow
+because I often want to add URLs from devices on which I cannot install the Pocket app or browser extension.
+Pocket announced in April 2023 that they were [discontinuing the email to Pocket feature](https://help.getpocket.com/article/1020-saving-to-pocket-via-email).
+I was disappointed by this and decided to build a tool to replace it.
+
+To use this tool to replace the email to Pocket feature, you will need to configure your email client to save the email message
+to a file then run `put_in_pocket` on that file. I use a Mac with Apple Mail so I use the [Rules](https://support.apple.com/guide/mail/use-rules-to-manage-emails-you-receive-mlhlp1017/mac#:~:text=Use%20rules%20to%20manage%20emails%20you%20receive%20in,message.%205%20Specify%20the%20conditions.%20More%20items%20)
+feature to save the message to a file then run `put_in_pocket` on that file using an AppleScript rule.
+
+[!Screenshot of Apple Mail rule](https://raw.githubusercontent.com/RhetTbull/put_in_pocket/main/Apple_Mail_rule.png "Apple Mail rule")
+
+The `save_to_pocket` AppleScript I use to save the email and run `put_in_pocket` is available in [here](https://raw.githubusercontent.com/RhetTbull/put_in_pocket/main/save_to_pocket.applescript).
+
+```applescript
+-- Runs the put_in_pocket.py script to save URL found in message body to Pocket 
+-- This script should be saved to ~/Library/Application\ Scripts/com.apple.mail/
+-- Then use Mail > Settings > Rules > Add Rule to create a rule to run this script when mail arrives matching your criteria
+-- I use "To contains myemail+add@me.com" as the rule as you can add anything after a "+" to an email address and the email
+-- will still be delivered
+-- You will need to set the variable theScripPath to the path to the script you want to run (which runs put_in_pocket.py) 
+-- and this must be done in the 'using terms from application "Mail"' block or the script won't be able to access the variable
+-- The first URL in the subject line or body of the email will parsed and added to Pocket by put_in_pocket.py
+-- however, if the content of the email is MIME formatted, URLs will not be extracted
+
+using terms from application "Mail"
+    on perform mail action with messages theMessages
+        set theScriptPath to "/Users/rhet/.local/bin/put_in_pocket.sh"
+        repeat with theMessage in theMessages
+            set theSubject to ""
+            set theBody to ""
+            set theSubject to subject of theMessage
+            set theBody to source of theMessage
+            set uniqueID to (do shell script "uuidgen") -- generate a unique ID using the "uuidgen" command
+            set theTempFile to POSIX path of (path to temporary items folder) & "save_to_pocket_" & uniqueID & ".txt"
+            set theFileID to open for access theTempFile with write permission
+            write theSubject & " " & theBody to theFileID
+            close access theFileID
+            set theCommand to theScriptPath & " " & theTempFile
+            do shell script theCommand
+        end repeat
+    end perform mail action with messages
+end using terms from
+```
+
+## License
+
+MIT License, Copyright (c) 2023, Rhet Turnbull
+
+## Contributing
+
+Bug reports and pull requests are welcome on [GitHub](https://github.com/RhetTbull/put_in_pocket).
