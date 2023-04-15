@@ -38,6 +38,16 @@ After you get your consumer key, run `put_in_pocket --authorize` and follow the 
 
 You'll need to enter your consumer key then follow the link to Pocket to authorize the application.
 
+If you already have a Pocket access token, you can specify it on the command line with the `--authorize` and `--access-token` options:
+
+`put_in_pocket --authorize --consumer-key 123456-7c1d9ad1324ae57564297c142 --access-token 12345-abcd-2df4-xyz-21345`
+
+(No, those are not real keys.)
+
+Once you have authorized `put_in_pocket`, it will store your access token in the [XDG config directory](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html) in a file named `config.toml` which for my Mac is `~/.config/put_in_pocket/config.toml`.
+
+Unless you specify the `--no-log` option when running, `put_in_pocket` will also log to a file in the [XDG data directory](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html) in a file named `put_in_pocket.log` which for my Mac is `~/.local/share/put_in_pocket/put_in_pocket.log`.
+
 ## Motivation for building this tool
 
 I have been a heavy Pocket user for many years and the "email to Pocket" feature is a big part of my workflow
@@ -86,6 +96,41 @@ using terms from application "Mail"
         end repeat
     end perform mail action with messages
 end using terms from
+```
+
+## Command Line Tool
+
+To see all options, run `python3 -m put_in_pocket --help`:
+
+```
+Usage: put_in_pocket.py [OPTIONS] [FILE_OR_URL]...
+
+  Add URL or the first URL found in a text FILE to Pocket.
+
+  FILE_OR_URL can be a URL or a path to a text file containing a URL (for
+  example, an email message in .eml or .txt format)
+
+  If FILE_OR_URL is a file and it contains multiple URLs, only the first URL
+  will be added to Pocket.
+
+  You may specify multiple FILE_OR_URL arguments.
+
+Options:
+  --version            Show the version and exit.
+  --verbose            Print verbose output.
+  --log / --no-log     Log to file: /Users/rhet/.local/share/put_in_pocket/put
+                       _in_pocket.log.
+  --dry-run            Dry run mode; don't add URL to Pocket.
+  --consumer-key TEXT  Pocket API consumer key; can also be specified in
+                       POCKET_CONSUMER_KEY environment variable or loaded from
+                       /Users/rhet/.config/put_in_pocket/config.toml.
+  --access-token TEXT  Pocket API access token; can also be specified in
+                       POCKET_ACCESS_TOKEN environment variable or loaded from
+                       /Users/rhet/.config/put_in_pocket/config.toml.
+  --authorize          Authenticate with Pocket to get access token hen exit;
+                       will store access token in
+                       /Users/rhet/.config/put_in_pocket/config.toml.
+  --help               Show this message and exit.
 ```
 
 ## License
