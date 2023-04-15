@@ -98,6 +98,9 @@ using terms from application "Mail"
 end using terms from
 ```
 
+If you don't use a Mac or you use a different email client, you'll need to find another solution to save the email to a text file but
+you should then still be able to use `put_in_pocket` to extract the URL and add it to Pocket.
+
 ## Command Line Tool
 
 To see all options, run `python3 -m put_in_pocket --help`:
