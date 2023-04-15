@@ -26,5 +26,3 @@ using terms from application "Mail"
 		end repeat
 	end perform mail action with messages
 end using terms from
-
-sav
