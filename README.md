@@ -30,7 +30,7 @@ You can do this by creating an application at [https://getpocket.com/developer/a
 
 You will need to give your application a name and a description, and ensure that `add` permission is selected.
 
-[!The new Pocket app configuration page](https://raw.githubusercontent.com/RhetTbull/put_in_pocket/main/NewPocketApp.png "The new Pocket app configuration page")
+![The new Pocket app configuration page](https://raw.githubusercontent.com/RhetTbull/put_in_pocket/main/NewPocketApp.png "The new Pocket app configuration page")
 
 The first time you run `put_in_pocket`, it will ask you to authorize it to access your Pocket account.
 
@@ -49,7 +49,11 @@ To use this tool to replace the email to Pocket feature, you will need to config
 to a file then run `put_in_pocket` on that file. I use a Mac with Apple Mail so I use the [Rules](https://support.apple.com/guide/mail/use-rules-to-manage-emails-you-receive-mlhlp1017/mac#:~:text=Use%20rules%20to%20manage%20emails%20you%20receive%20in,message.%205%20Specify%20the%20conditions.%20More%20items%20)
 feature to save the message to a file then run `put_in_pocket` on that file using an AppleScript rule.
 
-[!Screenshot of Apple Mail rule](https://raw.githubusercontent.com/RhetTbull/put_in_pocket/main/Apple_Mail_rule.png "Apple Mail rule")
+![Screenshot of Apple Mail rule](https://raw.githubusercontent.com/RhetTbull/put_in_pocket/main/Apple_Mail_rule.png "Apple Mail rule")
+
+To trigger the rule, I have the rule run on messages sent to my email address with a "+add" appended to the email address.
+This is known as [email subaddressing](https://zemalf.com/1418/email-sub-addressing/#:~:text=What%20is%20email%20sub-addressing%3F%201%20You%20can%20add,%2Btag%20qualifiers%20to%20effectively%20create%20infinite%20email%20sub-addresses.) and is supported by most email providers.
+You could also use a dedicated email address for this purpose or use "add" in the subject line of the email, etc.
 
 The `save_to_pocket` AppleScript I use to save the email and run `put_in_pocket` is available in [here](https://raw.githubusercontent.com/RhetTbull/put_in_pocket/main/save_to_pocket.applescript).
 
