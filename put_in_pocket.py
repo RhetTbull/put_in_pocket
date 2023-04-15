@@ -101,17 +101,11 @@ def save_config_dict(config: dict[str, Any]):
         toml.dump(config, f)
 
 
-def save_config(
-    consumer_key: str, access_token: str, request_token: str
-) -> tuple[str, str, str]:
+def save_config(consumer_key: str, access_token: str) -> tuple[str, str, str]:
     """Save the config to the config file and return the tokens."""
-
-    # request token is not saved but is returned in case it's needed by the calling code
-    # this allows `return save_config() to be used in the get_api_tokens() function`
 
     config = {"pocket": {"consumer_key": consumer_key, "access_token": access_token}}
     save_config_dict(config)
-    return consumer_key, access_token, request_token
 
 
 def get_url_from_text(text: str) -> str | None:
@@ -161,7 +155,7 @@ def add_url_to_pocket(url: str, consumer_key: str, access_token: str) -> dict[st
     data = {"url": url, "consumer_key": consumer_key, "access_token": access_token}
     response = requests.post(endpoint, headers=headers, json=data)
     if response.status_code != 200:
-        raise ValueError(f"Error adding URL to Pocket: {response.content}")
+        raise ValueError(f"Error adding URL '{url}' to Pocket: {response.content}")
     return response.json()
 
 
@@ -241,7 +235,8 @@ def get_api_tokens(
     """Get consumer key, access token, request token from config or from user, save to config."""
 
     if consumer_key and access_token:
-        return save_config(consumer_key, access_token, "")
+        save_config(consumer_key, access_token)
+        return consumer_key, access_token, ""
 
     config = load_config()
     key_, token_ = get_tokens_from_config(config)
@@ -251,20 +246,65 @@ def get_api_tokens(
     redirect_uri = "https://www.google.com"
     if not consumer_key:
         print(
-            f"consumer_key or access_token not found in config file at {get_config_file()} or in {POCKET_CONSUMER_KEY} environment variable."
+            f"consumer_key or access_token not found in config file at {get_config_file()} or in {POCKET_CONSUMER_KEY} environment variable.",
+            file=sys.stderr,
         )
         get_consumer_key = get_consumer_key()
 
     if not access_token:
         print(
-            f"consumer_key or access_token not found in config file at {get_config_file()} or in {POCKET_ACCESS_TOKEN} environment variable."
+            f"consumer_key or access_token not found in config file at {get_config_file()} or in {POCKET_ACCESS_TOKEN} environment variable.",
+            file=sys.stderr,
         )
         request_token = authenticate_with_pocket(consumer_key, redirect_uri)
         access_token = get_access_token(consumer_key, request_token)
     else:
         request_token = get_request_token(consumer_key, redirect_uri)
 
-    return save_config(consumer_key, access_token, request_token)
+    save_config(consumer_key, access_token)
+    return consumer_key, access_token, request_token
+
+
+def process_file_or_url(
+    file_or_url: str, consumer_key: str, access_token: str, dry_run: bool
+) -> bool:
+    """Process a URL or a file containing a URL to add the URL to Pocket
+    
+    Args:
+        file_or_url (str): The URL or path to a file containing a URL.
+        consumer_key (str): The Pocket API consumer key.
+        access_token (str): The Pocket API access token.
+        dry_run (bool): If True, don't add the URL to Pocket.
+    
+    Returns:
+        bool: True if the URL was added to Pocket, False otherwise.
+    """
+    if pathlib.Path(file_or_url).is_file():
+        verbose(f"Reading text file: {file_or_url}")
+        with open(file_or_url, "r") as f:
+            text = f.read()
+            url = get_url_from_text(text)
+    else:
+        # Assume the argument is a URL.
+        url = get_url_from_text(file_or_url)
+
+    if not url:
+        print(f"No URL found in: {file_or_url}", file=sys.stderr)
+        return False
+    verbose(f"Found URL: '{url}'")
+
+    # Add the URL to Pocket.
+    if not dry_run:
+        response = add_url_to_pocket(url, consumer_key, access_token)
+        if response["status"] == 1:
+            msg = f"URL added to Pocket: '{url}'"
+            print(msg)
+        else:
+            msg = f"Error {response['status']} adding URL to Pocket: '{url}'"
+            print(msg, file=sys.stderr)
+        log(msg)
+        verbose(f"{response}")
+    return True
 
 
 @click.command()
@@ -325,7 +365,7 @@ def main(
     _global_verbose = verbose_
 
     if not authorize and not file_or_url:
-        print("No FILE or URL specified.")
+        print("No FILE or URL specified.", file=sys.stderr)
         click.echo(ctx.get_help())
         ctx.exit(1)
 
@@ -335,34 +375,11 @@ def main(
         print(f"Authenticated to Pocket with {consumer_key=} and {access_token=}")
         ctx.exit()
 
-    for f_or_u in file_or_url:
-        if pathlib.Path(f_or_u).is_file():
-            verbose(f"Reading text file: {f_or_u}")
-            with open(f_or_u, "r") as f:
-                text = f.read()
-                url = get_url_from_text(text)
-        else:
-            # Assume the argument is a URL.
-            url = get_url_from_text(f_or_u)
-
-        if not url:
-            verbose("No URL found in the text file.")
-            ctx.exit(1)
-        verbose(f"Found URL: '{url}'")
-
-        # Add the URL to Pocket.
-        if not dry_run:
-            response = add_url_to_pocket(url, consumer_key, access_token)
-            if response["status"] == 1:
-                print(f"URL added to Pocket: '{url}'")
-                log(f"URL added to Pocket: '{url}'")
-            else:
-                print(
-                    f"Error {response['status']} adding URL to Pocket: '{url}'",
-                    file=sys.stderr,
-                )
-                log(f"Error {response['status']} adding URL to Pocket: '{url}'")
-            verbose(f"{response}")
+    added_count = sum(
+        process_file_or_url(file_or_url, consumer_key, access_token, dry_run)
+        for file_or_url in file_or_url
+    )
+    print(f"Added {added_count} URL{'s' if added_count > 1 else ''} to Pocket.")
 
 
 if __name__ == "__main__":
