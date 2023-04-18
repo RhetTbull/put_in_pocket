@@ -136,6 +136,10 @@ Options:
   --help               Show this message and exit.
 ```
 
+## See Also
+
+- [pockyt](https://github.com/achembarpu/pockyt): a more complete Python CLI for Pocket. I probably should have just used this but building put_in_pocket was a good exercise to learn the Pocket API.
+
 ## License
 
 MIT License, Copyright (c) 2023, Rhet Turnbull
